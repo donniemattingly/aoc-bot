@@ -3,6 +3,9 @@ from datetime import datetime
 import json
 import aiohttp
 from config import CACHE_TTL
+import logging
+
+logger = logging.getLogger('AoCBot')
 
 class AoCLeaderboard:
     def __init__(self, session_token, leaderboard_id, year):
@@ -21,13 +24,13 @@ class AoCLeaderboard:
                 cache_time = cache_data.get("timestamp", 0)
 
                 if (datetime.now().timestamp() - cache_time) < self.CACHE_TTL:
-                    print("Using cached leaderboard data")
+                    logger.info("Using cached leaderboard data")
                     return cache_data.get("data")
                 else:
-                    print("Cache expired")
+                    logger.info("Cache expired")
                     return None
         except (FileNotFoundError, json.JSONDecodeError):
-            print("No valid cache found")
+            logger.info("No valid cache found")
             return None
 
     def save_cache(self, data):
@@ -53,85 +56,10 @@ class AoCLeaderboard:
                 if response.status == 200:
                     data = await response.json()
                     self.save_cache(data)
-                    print("Fetched fresh leaderboard data and updated cache")
+                    logger.info("Fetched fresh leaderboard data and updated cache")
                     return data
-                print(f"Failed to fetch leaderboard data: {response.status}")
+                logger.error(f"Failed to fetch leaderboard data: {response.status}")
                 return None
-
-    def format_leaderboard(self, data):
-        """Format leaderboard data into a readable message"""
-        users = []
-        current_day = datetime.now().day
-
-        # Define star symbols with consistent width
-        BOTH_STARS = "★"    # Full star
-        ONE_STAR = "☆"      # Hollow star
-        NO_STARS = "·"      # Middle dot (or could use "░" for a block)
-
-        # Get max name length for padding
-        max_name_length = 0
-        for member_data in data["members"].values():
-            name = member_data.get("name", "Anonymous")
-            if member_data.get("stars", 0) > 0:  # Only consider active users
-                max_name_length = max(max_name_length, len(name))
-
-        # Add padding to ensure alignment
-        name_padding = max_name_length + 2  # Add some extra space
-        
-        for member_id, member_data in data["members"].items():
-            name = member_data.get("name", "Anonymous")
-            stars = member_data.get("stars", 0)
-            local_score = member_data.get("local_score", 0)
-            
-            if stars == 0:
-                continue
-                
-            day_status = []
-            completion_data = member_data.get("completion_day_level", {})
-            
-            for day in range(1, current_day + 1):
-                day_info = completion_data.get(str(day), {})
-                if "2" in day_info:
-                    day_status.append(BOTH_STARS)
-                elif "1" in day_info:
-                    day_status.append(ONE_STAR)
-                else:
-                    day_status.append(NO_STARS)
-            
-            users.append((name, stars, local_score, day_status))
-        
-        users.sort(key=lambda x: (-x[1], -x[2], x[0]))
-        
-        # Format day numbers vertically for two digits
-        day_numbers_top = []
-        day_numbers_bottom = []
-        for day in range(1, current_day + 1):
-            if day < 10:
-                day_numbers_top.append(" ")
-                day_numbers_bottom.append(str(day))
-            else:
-                day_numbers_top.append(str(day)[0])    # First digit
-                day_numbers_bottom.append(str(day)[1])  # Second digit
-        
-        lines = ["**🎄 Advent of Code Leaderboard 🎄**\n"]
-        
-        # Add day numbers in two rows for double digits
-        lines.append(f"```\n{'Day':<{max_name_length}}  {' '.join(day_numbers_top)}")
-        lines.append(f"{'':<{max_name_length}}  {' '.join(day_numbers_bottom)}")
-        
-        # Create separator line that matches the header
-        separator_length = max_name_length + 2 + current_day * 2  # name width + 2 spaces + day columns
-        lines.append("-" * separator_length)
-        
-        # Format each user's line with proper padding
-        for i, (name, stars, score, day_status) in enumerate(users, 1):
-            status_line = " ".join(day_status)
-            # Pad the name to align all status indicators
-            padded_name = f"{name:<{max_name_length}}"
-            lines.append(f"{padded_name}  {status_line}  ({stars}⭐ Score: {score})")
-        
-        lines.append("```")
-        return "\n".join(lines)
 
     def check_for_new_stars(self, data, last_check_time):
         """Check for new stars since last check"""
@@ -140,7 +68,7 @@ class AoCLeaderboard:
 
         for member_id, member_data in data["members"].items():
             member_name = member_data.get("name", "Anonymous")
-            print(f"Checking stars for {member_name}")
+            logger.debug(f"Checking stars for {member_name}")
 
             for day, stars in member_data["completion_day_level"].items():
                 for star_num, star_data in stars.items():
@@ -151,14 +79,20 @@ class AoCLeaderboard:
                             "time": star_time,
                             "message": f"🌟 **{member_name}** completed Day {day} Part {star_num} at <t:{star_time}:t>!"
                         })
-                        print(f"Found new star: Day {day} Part {star_num} by {member_name}")
+                        logger.info(f"Found new star: Day {day} Part {star_num} by {member_name}")
 
-        return sorted(new_achievements, key=lambda x: x["time"]) 
+        return sorted(new_achievements, key=lambda x: x["time"])
 
 async def test_leaderboard():
     """Test function to fetch and display the leaderboard"""
     from config import AOC_SESSION_TOKEN, AOC_LEADERBOARD_ID, AOC_YEAR
     import asyncio
+
+    # Set up logging for test function
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
 
     # Create leaderboard instance
     leaderboard = AoCLeaderboard(
@@ -170,10 +104,10 @@ async def test_leaderboard():
     # Fetch and display data
     data = await leaderboard.fetch_data(force_fresh=True)
     if data:
-        print("\nFormatted Leaderboard:")
-        print(leaderboard.format_leaderboard(data))
+        logger.info("\nFormatted Leaderboard:")
+        logger.info(leaderboard.format_leaderboard(data))
     else:
-        print("Failed to fetch leaderboard data")
+        logger.error("Failed to fetch leaderboard data")
 
 if __name__ == "__main__":
     # Run the test function

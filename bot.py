@@ -4,7 +4,15 @@ from discord import app_commands
 from typing import Optional
 from datetime import datetime
 import os
-from dotenv import load_dotenv
+import logging
+import sys
+
+# Set up logging
+logger = logging.getLogger('AoCBot')
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logger.addHandler(handler)
 
 # Create bot instance with command prefix '!'
 import discord
@@ -19,7 +27,6 @@ try:
     from config import *
 except ImportError:
     # Load from environment variables if config.py doesn't exist
-    load_dotenv()
     TOKEN = os.getenv('DISCORD_TOKEN')
     AOC_SESSION_TOKEN = os.getenv('AOC_SESSION_TOKEN')
     AOC_LEADERBOARD_ID = os.getenv('AOC_LEADERBOARD_ID')
@@ -59,7 +66,7 @@ class AoCBot(discord.Client):
 
         self.TESTING_MODE = TESTING_MODE
         if self.TESTING_MODE:
-            print("🧪 Running in TESTING MODE - no messages will be sent to Discord")
+            logger.info("🧪 Running in TESTING MODE - no messages will be sent to Discord")
 
         # Create leaderboard instance
         self.leaderboard = AoCLeaderboard(
@@ -69,27 +76,27 @@ class AoCBot(discord.Client):
         )
 
     async def setup_hook(self):
-        print("Bot is starting up...")
+        logger.info("Bot is starting up...")
         await self.check_for_new_stars()
         self.check_for_new_stars.start()
-        print("Initial check complete and periodic checks started")
+        logger.info("Initial check complete and periodic checks started")
 
     async def on_ready(self):
-        print(f"Logged in as {self.user} (ID: {self.user.id})")
-        print("\nServers the bot is in:")
+        logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
+        logger.info("\nServers the bot is in:")
         
         # Register commands for each guild
         for guild in self.guilds:
-            print(f"- {guild.name} (ID: {guild.id})")
-            print("  Channels:")
+            logger.info(f"- {guild.name} (ID: {guild.id})")
+            logger.info("  Channels:")
             for channel in guild.channels:
-                print(f"  - {channel.name} (ID: {channel.id})")
+                logger.info(f"  - {channel.name} (ID: {channel.id})")
             
             # Register commands for this guild
             guild_obj = discord.Object(id=guild.id)
             self.tree.clear_commands(guild=guild_obj)
             await self.tree.sync(guild=guild_obj)
-            print(f"🔄 Cleared and syncing commands for guild {guild.id}")
+            logger.info(f"🔄 Cleared and syncing commands for guild {guild.id}")
             
             # Add commands specifically for this guild
             command = app_commands.Command(
@@ -99,7 +106,7 @@ class AoCBot(discord.Client):
             )
             self.tree.add_command(command, guild=guild_obj)
             await self.tree.sync(guild=guild_obj)
-            print(f"✅ Added leaderboard command to guild {guild.id}")
+            logger.info(f"✅ Added leaderboard command to guild {guild.id}")
 
             command = app_commands.Command(
                 name="starsplz",
@@ -126,22 +133,22 @@ class AoCBot(discord.Client):
 
     @tasks.loop(minutes=15)  # Run every 15 minutes
     async def check_for_new_stars(self):
-        print(f"\nChecking for new stars at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info(f"\nChecking for new stars at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         data = await self.leaderboard.fetch_data(force_fresh=True)
         if not data:
-            print("❌ Failed to fetch leaderboard data")
+            logger.error("❌ Failed to fetch leaderboard data")
             return
 
         channel = self.get_channel(self.ANNOUNCEMENT_CHANNEL_ID)
         if not channel:
-            print("❌ Could not find announcement channel")
+            logger.error("❌ Could not find announcement channel")
             return
 
         new_achievements = self.leaderboard.check_for_new_stars(data, self.last_check_time)
         
         if new_achievements:
-            print(f"Found {len(new_achievements)} new achievements!")
+            logger.info(f"Found {len(new_achievements)} new achievements!")
             messages = [achievement["message"] for achievement in new_achievements]
             
             # Split messages into chunks
@@ -170,7 +177,7 @@ class AoCBot(discord.Client):
                     f"{'🧪 Simulated' if self.TESTING_MODE else '✅'} message chunk of length {len(chunk)}"
                 )
         else:
-            print("No new achievements found")
+            logger.info("No new achievements found")
 
         # Update last check time and save it
         self.last_check_time = int(datetime.now().timestamp())
@@ -202,9 +209,9 @@ class AoCBot(discord.Client):
     async def send_message(self, channel, content):
         """Wrapper for sending messages that respects testing mode"""
         if self.TESTING_MODE:
-            print("\n🧪 Would have sent to Discord:")
-            print(f"Channel: {channel.name} ({channel.id})")
-            print(f"Message content:\n{content}")
+            logger.info("\n🧪 Would have sent to Discord:")
+            logger.info(f"Channel: {channel.name} ({channel.id})")
+            logger.info(f"Message content:\n{content}")
             return None
         else:
             return await channel.send(content)
@@ -222,7 +229,7 @@ class AoCBot(discord.Client):
             await interaction.followup.send(message)
                 
         except Exception as e:
-            print(f"Error showing leaderboard: {e}")
+            logger.error(f"Error showing leaderboard: {e}", exc_info=True)
             await interaction.followup.send("❌ An error occurred while fetching the leaderboard")
 
     async def force_star_check(self, interaction: discord.Interaction):
@@ -230,7 +237,7 @@ class AoCBot(discord.Client):
         await interaction.response.defer()
         
         try:
-            print(f"\n⭐ Forced star check requested by {interaction.user} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(f"\n⭐ Forced star check requested by {interaction.user} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
             # Run the star check
             await self.check_for_new_stars()
@@ -238,7 +245,7 @@ class AoCBot(discord.Client):
             await interaction.followup.send("✅ Force-checked for new stars!")
             
         except Exception as e:
-            print(f"Error during forced star check: {e}")
+            logger.error(f"Error during forced star check: {e}", exc_info=True)
             await interaction.followup.send("❌ An error occurred while checking for stars")
 
 
