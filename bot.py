@@ -101,6 +101,14 @@ class AoCBot(discord.Client):
             await self.tree.sync(guild=guild_obj)
             print(f"✅ Added leaderboard command to guild {guild.id}")
 
+            command = app_commands.Command(
+                name="starsplz",
+                description="Force check for new stars right now",
+                callback=self.force_star_check
+            )
+            self.tree.add_command(command, guild=guild_obj)
+            print(f"✅ Added starsplz command to guild {guild.id}")
+
         await self.change_presence(activity=discord.Game(name="Advent of Code 2024"))
 
     async def on_message(self, message):
@@ -216,6 +224,22 @@ class AoCBot(discord.Client):
         except Exception as e:
             print(f"Error showing leaderboard: {e}")
             await interaction.followup.send("❌ An error occurred while fetching the leaderboard")
+
+    async def force_star_check(self, interaction: discord.Interaction):
+        """Force an immediate check for new stars"""
+        await interaction.response.defer()
+        
+        try:
+            print(f"\n⭐ Forced star check requested by {interaction.user} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # Run the star check
+            await self.check_for_new_stars()
+            
+            await interaction.followup.send("✅ Force-checked for new stars!")
+            
+        except Exception as e:
+            print(f"Error during forced star check: {e}")
+            await interaction.followup.send("❌ An error occurred while checking for stars")
 
 
 # Create and run the bot
