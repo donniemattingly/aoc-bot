@@ -55,9 +55,6 @@ class AoCBot(discord.Client):
 
         # Manual mapping of AoC users to Discord names
         self.user_mapping = {
-            # 'aoc_username': 'Discord Name',
-            # 'Chad Orwig': 'cworwig',
-            # Add more mappings as needed
         }
 
         self.TESTING_MODE = TESTING_MODE
