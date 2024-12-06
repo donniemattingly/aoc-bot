@@ -94,27 +94,30 @@ class AoCBot(discord.Client):
             
             # Register commands for this guild
             guild_obj = discord.Object(id=guild.id)
-            self.tree.clear_commands(guild=guild_obj)
-            await self.tree.sync(guild=guild_obj)
-            logger.info(f"🔄 Cleared and syncing commands for guild {guild.id}")
             
-            # Add commands specifically for this guild
-            command = app_commands.Command(
-                name="leaderboard",
-                description="Show the current AoC leaderboard",
-                callback=self.show_leaderboard
-            )
-            self.tree.add_command(command, guild=guild_obj)
+            # Clear existing commands
+            self.tree.clear_commands(guild=guild_obj)
+            
+            # Add all commands
+            commands = [
+                app_commands.Command(
+                    name="leaderboard",
+                    description="Show the current AoC leaderboard",
+                    callback=self.show_leaderboard
+                ),
+                app_commands.Command(
+                    name="starsplz",
+                    description="Force check for new stars right now",
+                    callback=self.force_star_check
+                )
+            ]
+            
+            for command in commands:
+                self.tree.add_command(command, guild=guild_obj)
+            
+            # Sync all commands at once
             await self.tree.sync(guild=guild_obj)
-            logger.info(f"✅ Added leaderboard command to guild {guild.id}")
-
-            command = app_commands.Command(
-                name="starsplz",
-                description="Force check for new stars right now",
-                callback=self.force_star_check
-            )
-            self.tree.add_command(command, guild=guild_obj)
-            print(f"✅ Added starsplz command to guild {guild.id}")
+            logger.info(f"✅ Added and synced all commands to guild {guild.id}")
 
         await self.change_presence(activity=discord.Game(name="Advent of Code 2024"))
 
