@@ -33,6 +33,7 @@ except ImportError:
     AOC_YEAR = int(os.getenv('AOC_YEAR', '2024'))
     TESTING_MODE = os.getenv('TESTING_MODE', 'False').lower() == 'true'
     CACHE_TTL = int(os.getenv('CACHE_TTL', '900'))
+    TEST_SERVER_IDS = [int(id.strip()) for id in os.getenv('TEST_SERVER_IDS', '').split(',') if id.strip()]
 
 
 class AoCBot(discord.Client):
@@ -65,8 +66,10 @@ class AoCBot(discord.Client):
         }
 
         self.TESTING_MODE = TESTING_MODE
+        self.TEST_SERVER_IDS = TEST_SERVER_IDS
         if self.TESTING_MODE:
-            logger.info("🧪 Running in TESTING MODE - no messages will be sent to Discord")
+            logger.info("🧪 Running in TESTING MODE - will only register commands in test servers")
+            logger.info(f"Test server IDs: {self.TEST_SERVER_IDS}")
 
         # Create leaderboard instance
         self.leaderboard = AoCLeaderboard(
@@ -88,6 +91,12 @@ class AoCBot(discord.Client):
         # Register commands for each guild
         for guild in self.guilds:
             logger.info(f"- {guild.name} (ID: {guild.id})")
+            
+            # Skip if we're in testing mode and this isn't a test server
+            if self.TESTING_MODE and guild.id not in self.TEST_SERVER_IDS:
+                logger.info(f"Skipping command registration for non-test server {guild.name}")
+                continue
+                
             logger.info("  Channels:")
             for channel in guild.channels:
                 logger.info(f"  - {channel.name} (ID: {channel.id})")
@@ -245,7 +254,7 @@ class AoCBot(discord.Client):
             # Run the star check
             await self.check_for_new_stars()
             
-            await interaction.followup.send("✅ Force-checked for new stars!")
+            await interaction.followup.send("✅ checked for new stars!")
             
         except Exception as e:
             logger.error(f"Error during forced star check: {e}", exc_info=True)
