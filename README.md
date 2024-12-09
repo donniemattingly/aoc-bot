@@ -34,3 +34,16 @@ A Discord bot that tracks and announces progress on Advent of Code leaderboards.
 - Announces new stars and achievements
 - Shows leaderboard with `/leaderboard` command
 - Testing mode for development 
+
+## Testing
+
+This project uses pytest for testing. To run the tests:
+
+1. Install development dependencies:
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+2. Run the tests:
+   ```bash
+   pytest
+   ``` 

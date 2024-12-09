@@ -16,14 +16,24 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 
-# Environment variables
-.env
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 
 # Project specific
+config.py
 last_check.txt
-leaderboard_cache.json
-config.py 
+leaderboard_cache.json 
