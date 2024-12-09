@@ -1,0 +1,28 @@
+#!/bin/bash
+
+echo "Running pre-push hook..."
+
+# Activate virtual environment if it exists
+if [ -d "venv" ]; then
+    source venv/bin/activate
+fi
+
+# Run pytest
+python -m pytest
+
+# Store the exit code
+RESULT=$?
+
+# Deactivate virtual environment if it was activated
+if [ -n "$VIRTUAL_ENV" ]; then
+    deactivate
+fi
+
+# If tests failed, prevent push
+if [ $RESULT -ne 0 ]; then
+    echo "❌ Tests failed. Push aborted."
+    exit 1
+fi
+
+echo "✅ Tests passed!"
+exit 0 

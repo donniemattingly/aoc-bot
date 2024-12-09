@@ -37,3 +37,6 @@ htmlcov/
 config.py
 last_check.txt
 leaderboard_cache.json 
+
+# Don't ignore git hooks directory
+!scripts/git-hooks/ 

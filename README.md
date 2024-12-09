@@ -47,3 +47,17 @@ This project uses pytest for testing. To run the tests:
    ```bash
    pytest
    ``` 
+
+## Development Setup
+
+After cloning and setting up your virtual environment, install the git hooks:
+
+```bash
+# Make the install script executable
+chmod +x scripts/install_hooks.py
+
+# Install the hooks
+python scripts/install_hooks.py
+```
+
+This will install a pre-push hook that runs tests before allowing pushes to the repository. 
